@@ -1,71 +1,64 @@
-# bouncer README
+# Bouncer
 
-This is the README for your extension "bouncer". After writing up a brief description, we recommend including the following sections.
+> Nothing gets into your code without your OK.
 
-## Features
+Bouncer lets you review every file change Claude Code makes **after it finishes**, instead of approving
+each edit one by one. Keep or undo changes per file, or all at once, with a clear red/green diff.
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+Works in VS Code, Cursor, and other VS Code forks.
 
-For example if there is an image subfolder under your extension project workspace:
-
-\!\[feature X\]\(images/feature-x.png\)
-
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+> Bouncer is an unofficial, independent tool. It is not made by or affiliated with Anthropic.
 
 ## Requirements
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+- [Claude Code](https://code.claude.com) running in the project folder.
+- **Node.js** on your `PATH`. Claude Code runs Bouncer's hook with `node`.
 
-## Extension Settings
+## Getting started
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+1. Open your project folder.
+2. Click the **Bouncer** icon in the activity bar, then **Enable Bouncer**.
+   (Or run **Bouncer: Enable in this workspace** from the Command Palette.)
+3. Ask Claude to change some files.
+4. When Claude finishes you'll see *"Bouncer stopped 3 files at the door."* Click **Review**.
+5. Click a file to see the diff. Use ✓ **Keep** or ↺ **Undo** on each file, or **Keep All** / **Undo All** at the top.
 
-For example:
+## What you get
 
-This extension contributes the following settings:
+- **Pending Changes** list with a badge (`N`) for new files.
+- **Diff on click**: the original on the left, Claude's version on the right. New files diff against an empty document.
+- **Keep / Undo** per file, plus **Keep All / Undo All**. Undo All always asks first.
+- **Status bar** count (`🛡 Bouncer: 3`). Click it to jump to the list.
+- **The Bouncer** himself: a tiny pixel-art doorman who watches while Claude works and holds up a sign when files are waiting.
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+## Commands
 
-## Known Issues
+| Command | What it does |
+|---|---|
+| Bouncer: Enable in this workspace | Adds Bouncer's hooks to `.claude/settings.json` and `.bouncer/` to `.gitignore` |
+| Bouncer: Disable in this workspace | Removes only Bouncer's hooks |
+| Bouncer: Open Diff | Pick a pending file and open its diff |
+| Bouncer: Keep / Undo | Pick a pending file and keep or undo it |
+| Bouncer: Keep All / Undo All | Act on every pending file |
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+## How it works
 
-## Release Notes
+- Before Claude edits a file, a `PreToolUse` hook copies the original to `.bouncer/snapshots/`.
+  This happens only the first time per file, so you always compare against the pre-session version.
+- When Claude stops, a `Stop` hook marks the session `done` and Bouncer notifies you.
+- **Keep** deletes the snapshot. **Undo** restores the original, or deletes the file if Claude created it.
+- The hook never blocks Claude. Errors are written to `.bouncer/hook.log`.
 
-Users appreciate release notes as you update your extension.
+## Good to know
 
-### 1.0.0
+- `.claude/settings.json` gets the absolute path to the hook inside your installed extension. If you commit
+  that file, teammates without Bouncer installed at the same path will see hook errors. Consider keeping
+  it uncommitted, or disable Bouncer before committing.
+- After an extension update, Bouncer updates the hook path automatically the next time it activates.
+- In a multi-root workspace, Bouncer uses the first folder.
+- Changes Claude makes through shell commands (e.g. `rm`, `sed`) are not tracked. Only file edit tools are.
 
-Initial release of ...
+## Ideas for later
 
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+Per-hunk keep/undo, grouping changes by prompt, change summaries and stats, sensitive-file warnings,
+tracking files deleted by shell commands.

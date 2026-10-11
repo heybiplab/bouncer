@@ -1,0 +1,15 @@
+{
+  "session_id": "sample-session",
+  "transcript_path": "/tmp/bw/transcript.jsonl",
+  "cwd": "/tmp/bw",
+  "permission_mode": "default",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Edit",
+  "tool_input": {
+    "file_path": "/tmp/bw/a.txt",
+    "old_string": "hi",
+    "new_string": "hello",
+    "replace_all": false
+  },
+  "tool_use_id": "toolu_sample_edit"
+}

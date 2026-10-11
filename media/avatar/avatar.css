@@ -1,0 +1,113 @@
+/* Bouncer avatar styles: theme-aware pixel art with steps() animations. */
+
+:root {
+  --skin: #c98a5c;
+  --skin-shade: #a86f47;
+  --suit: var(--vscode-button-background, #0e639c);
+  --suit-dark: color-mix(in srgb, var(--suit) 75%, #000);
+  --shirt: var(--vscode-button-foreground, #fff);
+  --tie: var(--vscode-editor-foreground, #ccc);
+  --ink: #1b1b1b;
+  --door: var(--vscode-input-background, #3c3c3c);
+  --door-frame: var(--vscode-focusBorder, #007fd4);
+  --line: var(--vscode-widget-border, var(--vscode-panel-border, #555));
+  --rope: var(--vscode-errorForeground, #f48771);
+  --brass: var(--vscode-editorWarning-foreground, #cca700);
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--vscode-foreground);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+}
+
+.scene {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 12px 4px;
+  max-width: 240px;
+  margin: 0 auto;
+}
+
+.art {
+  width: 100%;
+  max-width: 192px;
+  height: auto;
+  image-rendering: pixelated;
+}
+
+.caption {
+  margin: 6px 0 0;
+  text-align: center;
+  color: var(--vscode-descriptionForeground);
+  min-height: 1.4em;
+}
+
+/* Sign held up in the "done" state. */
+.sign {
+  display: none;
+  padding: 3px 8px;
+  margin-bottom: -2px;
+  background: var(--vscode-editorWidget-background, var(--vscode-input-background));
+  color: var(--vscode-editorWidget-foreground, var(--vscode-foreground));
+  border: 2px solid var(--door-frame);
+  box-shadow: 2px 2px 0 var(--line);
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-weight: bold;
+  text-align: center;
+}
+
+/* Palette */
+.skin { fill: var(--skin); }
+.skin-shade, .ear { fill: var(--skin-shade); }
+.eye, .brow, .mouth, .shoe, .wire { fill: var(--ink); }
+.suit { fill: var(--suit); }
+.suit-dark { fill: var(--suit-dark); }
+.shirt { fill: var(--shirt); }
+.tie { fill: var(--tie); }
+.floor, .post { fill: var(--line); }
+.post-top, .knob { fill: var(--brass); }
+.rope { fill: var(--rope); }
+.door { fill: var(--door); }
+.door-frame { fill: var(--door-frame); }
+.door-panel { fill: var(--line); opacity: 0.35; }
+.board { fill: var(--skin-shade); }
+.paper { fill: #f4f1e8; }
+.clip { fill: var(--brass); }
+.ink { fill: var(--ink); opacity: 0.6; }
+
+/* State visibility */
+.arms-up, .clipboard { display: none; }
+body[data-state="watching"] .clipboard { display: inline; }
+body[data-state="done"] .arms-down { display: none; }
+body[data-state="done"] .arms-up { display: inline; }
+body[data-state="done"] .sign { display: block; }
+
+/* Animations: blink always, pace while watching, small bob while holding the sign. */
+.eyes { animation: blink 4s steps(1, end) infinite; }
+body[data-state="watching"] .bouncer { animation: pace 2.4s steps(6, end) infinite alternate; }
+body[data-state="done"] .bouncer,
+body[data-state="done"] .sign { animation: bob 1.2s steps(2, end) infinite; }
+
+@keyframes blink {
+  0%, 92%, 100% { opacity: 1; }
+  94%, 98% { opacity: 0; }
+}
+
+@keyframes pace {
+  from { transform: translateX(0); }
+  to { transform: translateX(-6px); }
+}
+
+@keyframes bob {
+  from { transform: translateY(0); }
+  to { transform: translateY(-1px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; }
+}

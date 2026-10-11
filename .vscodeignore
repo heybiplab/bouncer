@@ -5,10 +5,16 @@ node_modules/**
 src/**
 .gitignore
 .yarnrc
-esbuild.js
+esbuild.mjs
 vsc-extension-quickstart.md
 **/tsconfig.json
 **/eslint.config.mjs
 **/*.map
 **/*.ts
 **/.vscode-test.*
+test/**
+CLAUDE.md
+pnpm-lock.yaml
+pnpm-workspace.yaml
+.npmrc
+*.vsix

@@ -1,4 +1,5 @@
-const esbuild = require("esbuild");
+// esbuild script: bundles src/extension.ts into dist/extension.js (watch and production modes).
+import * as esbuild from "esbuild";
 
 const production = process.argv.includes('--production');
 const watch = process.argv.includes('--watch');

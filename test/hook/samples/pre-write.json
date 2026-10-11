@@ -1,0 +1,13 @@
+{
+  "session_id": "sample-session",
+  "transcript_path": "/tmp/bw/transcript.jsonl",
+  "cwd": "/tmp/bw",
+  "permission_mode": "default",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Write",
+  "tool_input": {
+    "file_path": "/tmp/bw/new-file.txt",
+    "content": "brand new\n"
+  },
+  "tool_use_id": "toolu_sample_write"
+}

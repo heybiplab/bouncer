@@ -1,49 +1,198 @@
 {
   "name": "bouncer",
-  "displayName": "bouncer",
-  "description": "",
-  "version": "0.0.1",
+  "displayName": "Bouncer",
+  "description": "Review Claude Code's file changes after it finishes. Keep or undo each file, with a clear diff.",
+  "version": "0.1.0",
+  "publisher": "biplabmondal",
+  "license": "UNLICENSED",
+  "icon": "media/icon.png",
   "engines": {
-    "vscode": "^1.140.0"
+    "vscode": "^1.125.0"
   },
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "keywords": [
+    "claude code",
+    "review",
+    "diff",
+    "undo",
+    "ai"
+  ],
+  "activationEvents": [
+    "workspaceContains:.bouncer/state.json"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "bouncer",
+          "title": "Bouncer",
+          "icon": "media/bouncer.svg"
+        }
+      ]
+    },
+    "views": {
+      "bouncer": [
+        {
+          "id": "bouncer.avatar",
+          "type": "webview",
+          "name": "Bouncer",
+          "initialSize": 1
+        },
+        {
+          "id": "bouncer.changes",
+          "name": "Pending Changes",
+          "initialSize": 3
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "bouncer.changes",
+        "when": "workbenchState == empty",
+        "contents": "Open a folder to put Bouncer to work."
+      },
+      {
+        "view": "bouncer.changes",
+        "when": "workbenchState != empty && !bouncer.enabled",
+        "contents": "Bouncer isn't on duty in this workspace yet.\n[Enable Bouncer](command:bouncer.enable)\nThis adds a hook to .claude/settings.json so Claude's edits wait here for your review."
+      },
+      {
+        "view": "bouncer.changes",
+        "when": "bouncer.enabled",
+        "contents": "All clear. Nobody's waiting at the door."
+      }
+    ],
     "commands": [
       {
-        "command": "bouncer.helloWorld",
-        "title": "Hello World"
+        "command": "bouncer.openDiff",
+        "title": "Open Diff",
+        "category": "Bouncer",
+        "icon": "$(diff)"
+      },
+      {
+        "command": "bouncer.keep",
+        "title": "Keep",
+        "category": "Bouncer",
+        "icon": "$(check)"
+      },
+      {
+        "command": "bouncer.undo",
+        "title": "Undo",
+        "category": "Bouncer",
+        "icon": "$(discard)"
+      },
+      {
+        "command": "bouncer.keepAll",
+        "title": "Keep All",
+        "category": "Bouncer",
+        "icon": "$(check-all)"
+      },
+      {
+        "command": "bouncer.undoAll",
+        "title": "Undo All",
+        "category": "Bouncer",
+        "icon": "$(discard)"
+      },
+      {
+        "command": "bouncer.enable",
+        "title": "Enable in this workspace",
+        "category": "Bouncer"
+      },
+      {
+        "command": "bouncer.disable",
+        "title": "Disable in this workspace",
+        "category": "Bouncer"
       }
-    ]
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "bouncer.keepAll",
+          "when": "view == bouncer.changes && bouncer.hasChanges",
+          "group": "navigation@1"
+        },
+        {
+          "command": "bouncer.undoAll",
+          "when": "view == bouncer.changes && bouncer.hasChanges",
+          "group": "navigation@2"
+        },
+        {
+          "command": "bouncer.enable",
+          "when": "view == bouncer.changes && !bouncer.enabled",
+          "group": "setup"
+        },
+        {
+          "command": "bouncer.disable",
+          "when": "view == bouncer.changes && bouncer.enabled",
+          "group": "setup"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "bouncer.keep",
+          "when": "view == bouncer.changes && viewItem == bouncer.change",
+          "group": "inline@1"
+        },
+        {
+          "command": "bouncer.undo",
+          "when": "view == bouncer.changes && viewItem == bouncer.change",
+          "group": "inline@2"
+        },
+        {
+          "command": "bouncer.openDiff",
+          "when": "view == bouncer.changes && viewItem == bouncer.change",
+          "group": "1_review@1"
+        },
+        {
+          "command": "bouncer.keep",
+          "when": "view == bouncer.changes && viewItem == bouncer.change",
+          "group": "1_review@2"
+        },
+        {
+          "command": "bouncer.undo",
+          "when": "view == bouncer.changes && viewItem == bouncer.change",
+          "group": "1_review@3"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "bouncer.openDiff",
+          "when": "workbenchState != empty"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "pnpm run package",
-    "compile": "pnpm run check-types && pnpm run lint && node esbuild.js",
+    "compile": "pnpm run check-types && pnpm run lint && node esbuild.mjs",
     "watch": "npm-run-all -p watch:*",
-    "watch:esbuild": "node esbuild.js --watch",
+    "watch:esbuild": "node esbuild.mjs --watch",
     "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
-    "package": "pnpm run check-types && pnpm run lint && node esbuild.js --production",
+    "package": "pnpm run check-types && pnpm run lint && node esbuild.mjs --production",
     "compile-tests": "tsc -p . --outDir out",
     "watch-tests": "tsc -p . -w --outDir out",
     "pretest": "pnpm run compile-tests && pnpm run compile && pnpm run lint",
     "check-types": "tsc --noEmit",
     "lint": "eslint src",
-    "test": "vscode-test"
+    "test": "vscode-test",
+    "test:hook": "node --test \"test/hook/*.test.mjs\"",
+    "vsix": "vsce package --no-dependencies --allow-missing-repository"
   },
   "devDependencies": {
-    "@types/vscode": "^1.140.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "24.x",
-    "typescript-eslint": "^8.61.1",
-    "eslint": "^10.5.0",
+    "@types/vscode": "1.125.0",
+    "@vscode/test-cli": "^0.0.15",
+    "@vscode/test-electron": "^3.0.0",
+    "@vscode/vsce": "4.0.0",
     "esbuild": "^0.28.1",
+    "eslint": "^10.5.0",
     "npm-run-all": "^4.1.5",
     "typescript": "^6.0.3",
-    "@vscode/test-cli": "^0.0.15",
-    "@vscode/test-electron": "^3.0.0"
+    "typescript-eslint": "^8.61.1"
   },
   "overrides": {
     "diff": "^8.0.4",

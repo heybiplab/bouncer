@@ -21,7 +21,20 @@
             "type": "npm",
             "script": "watch:esbuild",
             "group": "build",
-            "problemMatcher": "$esbuild-watch",
+            // Inline matcher (instead of "$esbuild-watch") so F5 works without the esbuild-problem-matchers extension.
+            "problemMatcher": {
+                "owner": "esbuild",
+                "fileLocation": "relative",
+                "pattern": [
+                    { "regexp": "^✘ \\[ERROR\\] (.*)$", "message": 1 },
+                    { "regexp": "^\\s+(.*):(\\d+):(\\d+):$", "file": 1, "line": 2, "column": 3 }
+                ],
+                "background": {
+                    "activeBegin": true,
+                    "beginsPattern": "^\\[watch\\] build started",
+                    "endsPattern": "^\\[watch\\] build finished"
+                }
+            },
             "isBackground": true,
             "label": "npm: watch:esbuild",
             "presentation": {

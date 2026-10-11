@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<!-- Bouncer avatar webview: pixel-art bouncer at the door; placeholders are filled by avatarView.ts. -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src {{cspSource}}; script-src 'nonce-{{nonce}}';">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="{{styleUri}}">
+  <title>Bouncer</title>
+</head>
+<body data-state="idle">
+  <main class="scene" aria-live="polite">
+    <div class="sign" id="sign"></div>
+    <svg class="art" viewBox="0 0 48 32" role="img" aria-label="Bouncer standing at the door" shape-rendering="crispEdges">
+      <!-- Floor -->
+      <rect class="floor" x="0" y="31" width="48" height="1"/>
+
+      <!-- Rope stanchion -->
+      <rect class="post-top" x="5" y="22" width="4" height="2"/>
+      <rect class="post" x="6" y="24" width="2" height="7"/>
+      <rect class="post" x="4" y="30" width="6" height="1"/>
+      <rect class="rope" x="8" y="25" width="5" height="1"/>
+      <rect class="rope" x="13" y="26" width="3" height="1"/>
+
+      <!-- Door -->
+      <rect class="door-frame" x="34" y="9" width="12" height="22"/>
+      <rect class="door" x="35" y="10" width="10" height="21"/>
+      <rect class="door-panel" x="36" y="12" width="8" height="7"/>
+      <rect class="door-panel" x="36" y="21" width="8" height="8"/>
+      <rect class="knob" x="42" y="20" width="2" height="1"/>
+
+      <g class="bouncer">
+        <!-- Head (bald) with earpiece -->
+        <rect class="skin" x="20" y="8" width="8" height="7"/>
+        <rect class="skin-shade" x="20" y="14" width="8" height="1"/>
+        <rect class="ear" x="19" y="11" width="1" height="2"/>
+        <rect class="ear" x="28" y="11" width="1" height="2"/>
+        <rect class="wire" x="29" y="12" width="1" height="4"/>
+        <g class="eyes">
+          <rect class="eye" x="22" y="11" width="1" height="1"/>
+          <rect class="eye" x="25" y="11" width="1" height="1"/>
+        </g>
+        <rect class="brow" x="21" y="10" width="3" height="1"/>
+        <rect class="brow" x="24" y="10" width="3" height="1"/>
+        <rect class="mouth" x="23" y="13" width="2" height="1"/>
+        <rect class="skin" x="22" y="15" width="4" height="1"/>
+
+        <!-- Suit, shirt, tie -->
+        <rect class="suit" x="18" y="16" width="12" height="10"/>
+        <rect class="shirt" x="23" y="16" width="2" height="3"/>
+        <rect class="tie" x="23" y="17" width="2" height="5"/>
+
+        <!-- Arms down (idle, watching) -->
+        <g class="arms-down">
+          <rect class="suit-dark" x="17" y="17" width="2" height="8"/>
+          <rect class="suit-dark" x="29" y="17" width="2" height="8"/>
+          <rect class="skin" x="17" y="25" width="2" height="1"/>
+          <rect class="skin" x="29" y="25" width="2" height="1"/>
+        </g>
+
+        <!-- Arms up holding the sign (done) -->
+        <g class="arms-up">
+          <rect class="suit-dark" x="16" y="2" width="2" height="15"/>
+          <rect class="suit-dark" x="30" y="2" width="2" height="15"/>
+          <rect class="skin" x="16" y="0" width="2" height="2"/>
+          <rect class="skin" x="30" y="0" width="2" height="2"/>
+        </g>
+
+        <!-- Clipboard (watching) -->
+        <g class="clipboard">
+          <rect class="board" x="27" y="19" width="5" height="6"/>
+          <rect class="paper" x="28" y="20" width="3" height="4"/>
+          <rect class="clip" x="28" y="18" width="3" height="1"/>
+          <rect class="ink" x="28" y="21" width="2" height="1"/>
+          <rect class="ink" x="28" y="23" width="3" height="1"/>
+        </g>
+
+        <!-- Legs and shoes -->
+        <rect class="suit" x="20" y="26" width="3" height="4"/>
+        <rect class="suit" x="25" y="26" width="3" height="4"/>
+        <rect class="shoe" x="19" y="30" width="4" height="1"/>
+        <rect class="shoe" x="25" y="30" width="4" height="1"/>
+      </g>
+    </svg>
+    <p class="caption" id="caption">All clear. Nobody's waiting at the door.</p>
+  </main>
+  <script nonce="{{nonce}}" src="{{scriptUri}}"></script>
+</body>
+</html>

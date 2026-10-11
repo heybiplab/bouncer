@@ -1,0 +1,9 @@
+{
+  "session_id": "sample-session",
+  "transcript_path": "/tmp/bw/transcript.jsonl",
+  "cwd": "/tmp/bw",
+  "permission_mode": "default",
+  "hook_event_name": "Stop",
+  "stop_hook_active": false,
+  "last_assistant_message": "Done."
+}
