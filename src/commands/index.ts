@@ -4,8 +4,8 @@ import { COMMANDS, CONTEXT_KEYS, ORIGINAL_SCHEME, STATUS_MESSAGE_MS } from '../c
 import { disableInWorkspace, enableInWorkspace } from '../setup/hookInstaller';
 import type { SnapshotStore } from '../store/snapshotStore';
 import type { PendingChange } from '../types';
-import { pluralFiles } from '../ui/statusBar';
 import { baseName, dirName, exists, isBinary, readBytes } from '../utils/fs';
+import { pluralFiles } from '../utils/format';
 import { emptyUri, originalUri } from '../views/originalContent';
 
 const ALL_CLEAR = "All clear. Nobody's waiting at the door.";
@@ -31,7 +31,12 @@ const isPendingChange = (value: unknown): value is PendingChange =>
 /** Uses the tree item passed in, or asks the user to pick one (Command Palette). */
 const resolveChange = async (store: SnapshotStore, arg: unknown, placeHolder: string): Promise<PendingChange | undefined> => {
   if (isPendingChange(arg)) {
-    return store.findById(arg.id) ?? arg;
+    // A tree item can be stale (e.g. clicked twice, or handled from another window): only act on live changes.
+    const live = store.findById(arg.id);
+    if (!live) {
+      flash(`$(info) Bouncer: ${baseName(arg.relPath)} was already handled`);
+    }
+    return live;
   }
   if (store.pending.length === 0) {
     void vscode.window.showInformationMessage(ALL_CLEAR);
@@ -53,18 +58,15 @@ const isDirty = (change: PendingChange): boolean =>
 
 /** Closes diff tabs Bouncer opened for these changes. */
 const closeDiffTabs = async (changes: readonly PendingChange[]): Promise<void> => {
-  const ids = new Set(changes.map((c) => c.id));
-  const relPaths = new Set(changes.map((c) => `/${c.relPath}`));
+  const paths = new Set(changes.map((c) => `/${c.relPath}`));
   const tabs = vscode.window.tabGroups.all
     .flatMap((group) => group.tabs)
-    .filter((tab) => {
-      const input = tab.input;
-      return (
+    .filter(
+      ({ input }) =>
         input instanceof vscode.TabInputTextDiff &&
         input.original.scheme === ORIGINAL_SCHEME &&
-        (ids.has(input.original.query) || relPaths.has(input.original.path))
-      );
-    });
+        paths.has(input.original.path),
+    );
   if (tabs.length > 0) {
     await vscode.window.tabGroups.close(tabs);
   }

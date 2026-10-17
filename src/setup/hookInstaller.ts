@@ -6,6 +6,7 @@ import {
   GITIGNORE_ENTRY,
   GITIGNORE_FILE,
   HOOK_MATCHER,
+  SHELL_MATCHER,
   HOOK_SCRIPT_DIR,
   HOOK_SCRIPT_FILE,
   HOOK_TIMEOUT_SECONDS,
@@ -16,12 +17,16 @@ import type { BouncerState, ClaudeSettings, HookHandler, HookMatcherGroup, Hooks
 import { exists, readTextOrNull, writeJson, writeText } from '../utils/fs';
 
 const PRE_TOOL_USE = 'PreToolUse';
+const POST_TOOL_USE = 'PostToolUse';
+const POST_TOOL_USE_FAILURE = 'PostToolUseFailure';
 const STOP = 'Stop';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const isBouncerHandler = (handler: HookHandler): boolean => handler.command?.includes(HOOK_SCRIPT_FILE) ?? false;
+/** Bouncer's handlers are recognised by the script name, so they survive path changes between versions. */
+const isBouncerHandler = (handler: HookHandler): boolean =>
+  isRecord(handler) && typeof handler.command === 'string' && handler.command.includes(HOOK_SCRIPT_FILE);
 
 /** Absolute path of the hook script bundled with this extension version. */
 export const hookScriptPath = (extensionUri: vscode.Uri): string =>
@@ -29,7 +34,17 @@ export const hookScriptPath = (extensionUri: vscode.Uri): string =>
 
 export const buildHookCommand = (scriptPath: string): string => `node "${scriptPath}"`;
 
-const bouncerHandler = (command: string): HookHandler => ({ type: 'command', command, timeout: HOOK_TIMEOUT_SECONDS });
+/**
+ * The handler Bouncer expects for each event. Tool hooks stay synchronous: originals must be saved before
+ * Claude edits, and shell changes must be recorded before Claude finishes. Stop only updates state.json and
+ * never controls Claude, so it runs in the background (`async: true`) and Claude doesn't wait for it.
+ */
+const bouncerHandler = (event: string, command: string): HookHandler => ({
+  type: 'command',
+  command,
+  timeout: HOOK_TIMEOUT_SECONDS,
+  ...(event === STOP ? { async: true } : {}),
+});
 
 /** Applies `fn` to every handler list, dropping groups and events that end up empty. */
 const mapHandlers = (settings: ClaudeSettings, fn: (handlers: HookHandler[]) => HookHandler[]): ClaudeSettings => {
@@ -68,14 +83,13 @@ export const addBouncerHooks = (settings: ClaudeSettings, command: string): Clau
   const append = (event: string, group: HookMatcherGroup) => {
     hooks[event] = [...(Array.isArray(hooks[event]) ? hooks[event] : []), group];
   };
-  append(PRE_TOOL_USE, { matcher: HOOK_MATCHER, hooks: [bouncerHandler(command)] });
-  append(STOP, { hooks: [bouncerHandler(command)] });
+  // Before file tools and shell commands; after shell commands (succeeded or failed) to see what they changed.
+  append(PRE_TOOL_USE, { matcher: HOOK_MATCHER, hooks: [bouncerHandler(PRE_TOOL_USE, command)] });
+  append(POST_TOOL_USE, { matcher: SHELL_MATCHER, hooks: [bouncerHandler(POST_TOOL_USE, command)] });
+  append(POST_TOOL_USE_FAILURE, { matcher: SHELL_MATCHER, hooks: [bouncerHandler(POST_TOOL_USE_FAILURE, command)] });
+  append(STOP, { hooks: [bouncerHandler(STOP, command)] });
   return { ...cleaned, hooks };
 };
-
-/** Points existing Bouncer handlers at `command`. */
-export const updateBouncerHookCommand = (settings: ClaudeSettings, command: string): ClaudeSettings =>
-  mapHandlers(settings, (handlers) => handlers.map((h) => (isBouncerHandler(h) ? { ...h, command } : h)));
 
 /** Adds `.bouncer/` to .gitignore content unless an equivalent line is present. */
 export const withGitignoreEntry = (content: string): string | null => {
@@ -141,7 +155,10 @@ export const disableInWorkspace = async (root: vscode.Uri): Promise<boolean> => 
   return true;
 };
 
-/** On activation: if enabled with an outdated script path, rewrite it silently. Returns whether enabled. */
+/**
+ * On activation: if enabled, make sure the hooks match this version (script path after an update, new events
+ * added in newer versions). Rewrites the file only when something differs. Returns whether enabled.
+ */
 export const syncHookPath = async (root: vscode.Uri, extensionUri: vscode.Uri): Promise<boolean> => {
   let settings: ClaudeSettings;
   try {
@@ -152,7 +169,7 @@ export const syncHookPath = async (root: vscode.Uri, extensionUri: vscode.Uri): 
   if (!isBouncerEnabled(settings)) {
     return false;
   }
-  const updated = updateBouncerHookCommand(settings, buildHookCommand(hookScriptPath(extensionUri)));
+  const updated = addBouncerHooks(settings, buildHookCommand(hookScriptPath(extensionUri)));
   if (JSON.stringify(updated) !== JSON.stringify(settings)) {
     await writeJson(settingsUri(root), updated);
   }

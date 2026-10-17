@@ -29,14 +29,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     return;
   }
 
-  const original = new OriginalContentProvider(store);
   context.subscriptions.push(
     store,
-    original,
-    vscode.workspace.registerTextDocumentContentProvider(ORIGINAL_SCHEME, original),
+    vscode.workspace.registerTextDocumentContentProvider(ORIGINAL_SCHEME, new OriginalContentProvider(store)),
     store.onDidChange(() => {
       tree.refresh();
-      original.refreshOpen();
       avatar.postState();
       void setContext(CONTEXT_KEYS.hasChanges, store.pending.length > 0);
     }),

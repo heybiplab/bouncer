@@ -1,6 +1,6 @@
 // Reads pending snapshots and session state from .bouncer/, and performs Keep / Undo on them.
 import * as vscode from 'vscode';
-import { BOUNCER_DIR, META_EXT, REFRESH_DEBOUNCE_MS, SNAP_EXT, SNAPSHOTS_DIR, STATE_FILE } from '../constants';
+import { BOUNCER_DIR, META_EXT, REFRESH_DEBOUNCE_MS, SNAP_EXT, SNAPSHOTS_DIR, STATE_FILE, WATCH_GLOB } from '../constants';
 import type { BouncerState, BouncerStatus, PendingChange, SnapshotMeta } from '../types';
 import { deleteIfExists, exists, readBytes, readJson, writeBytes } from '../utils/fs';
 
@@ -24,6 +24,8 @@ export class SnapshotStore implements vscode.Disposable {
   private changes: PendingChange[] = [];
   private state: BouncerState | null = null;
   private generation = 0;
+  private signature: string | undefined;
+  private queue: Promise<unknown> = Promise.resolve();
   private timer: ReturnType<typeof setTimeout> | undefined;
   private readonly emitter = new vscode.EventEmitter<void>();
   private readonly watcher: vscode.FileSystemWatcher;
@@ -32,7 +34,7 @@ export class SnapshotStore implements vscode.Disposable {
   readonly onDidChange = this.emitter.event;
 
   constructor(readonly root: vscode.Uri) {
-    this.watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(root, `${BOUNCER_DIR}/**`));
+    this.watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(root, WATCH_GLOB));
     const schedule = () => this.scheduleRefresh();
     this.watcher.onDidCreate(schedule);
     this.watcher.onDidChange(schedule);
@@ -76,9 +78,28 @@ export class SnapshotStore implements vscode.Disposable {
     if (gen !== this.generation) {
       return;
     }
+    const nextState = isBouncerState(state) ? state : null;
+    // Watcher events also fire for our own writes; only notify listeners when something visible changed.
+    const signature = JSON.stringify([changes.map((c) => [c.id, c.createdAt, c.existed]), nextState]);
+    if (signature === this.signature) {
+      return;
+    }
+    this.signature = signature;
     this.changes = changes;
-    this.state = isBouncerState(state) ? state : null;
+    this.state = nextState;
     this.emitter.fire();
+  }
+
+  /** Runs mutations one at a time, so double clicks or overlapping bulk actions can't race. */
+  private serialize<T>(task: () => Promise<T>): Promise<T> {
+    const run = this.queue.then(task, task);
+    this.queue = run.catch(() => undefined);
+    return run;
+  }
+
+  /** True if the snapshot still exists on disk (it may have been handled moments ago). */
+  private isStillPending(change: PendingChange): Promise<boolean> {
+    return exists(change.metaUri);
   }
 
   /** Original bytes of a file (empty for files Claude created). */
@@ -87,42 +108,58 @@ export class SnapshotStore implements vscode.Disposable {
   }
 
   /** Keep: accept Claude's version by forgetting the snapshot. */
-  async keep(change: PendingChange): Promise<void> {
-    await this.forget(change);
-    await this.refresh();
+  keep(change: PendingChange): Promise<void> {
+    return this.serialize(async () => {
+      await this.forget(change);
+      await this.refresh();
+    });
   }
 
   /** Undo: restore the original content, or delete the file if Claude created it. */
-  async undo(change: PendingChange): Promise<void> {
-    await this.restore(change);
-    await this.forget(change);
-    await this.refresh();
+  undo(change: PendingChange): Promise<void> {
+    return this.serialize(async () => {
+      if (await this.isStillPending(change)) {
+        await this.restore(change);
+        await this.forget(change);
+      }
+      await this.refresh();
+    });
   }
 
-  async keepAll(): Promise<void> {
-    await Promise.all(this.changes.map((c) => this.forget(c)));
-    await this.refresh();
+  keepAll(): Promise<void> {
+    return this.serialize(async () => {
+      await Promise.all(this.changes.map((c) => this.forget(c)));
+      await this.refresh();
+    });
   }
 
   /** Undoes every pending change; returns the paths that failed. */
-  async undoAll(): Promise<string[]> {
-    const targets = [...this.changes];
-    const results = await Promise.allSettled(
-      targets.map(async (c) => {
-        await this.restore(c);
-        await this.forget(c);
-      }),
-    );
-    await this.refresh();
-    return results.flatMap((r, i) => (r.status === 'rejected' ? [targets[i].relPath] : []));
+  undoAll(): Promise<string[]> {
+    return this.serialize(async () => {
+      const targets = [...this.changes];
+      const results = await Promise.allSettled(
+        targets.map(async (c) => {
+          await this.restore(c);
+          await this.forget(c);
+        }),
+      );
+      await this.refresh();
+      return results.flatMap((r, i) => (r.status === 'rejected' ? [targets[i].relPath] : []));
+    });
   }
 
   private async restore(change: PendingChange): Promise<void> {
-    if (change.existed) {
-      await writeBytes(change.fileUri, await readBytes(change.snapUri));
-    } else {
+    if (!change.existed) {
       await deleteIfExists(change.fileUri);
+      return;
     }
+    let original: Uint8Array;
+    try {
+      original = await readBytes(change.snapUri);
+    } catch {
+      throw new Error(`The saved original of ${change.relPath} is missing, so it can't be restored.`);
+    }
+    await writeBytes(change.fileUri, original);
   }
 
   /** Deletes the meta first (the commit marker), then the content copy. */

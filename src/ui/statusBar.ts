@@ -2,8 +2,7 @@
 import * as vscode from 'vscode';
 import { COMMANDS } from '../constants';
 import type { SnapshotStore } from '../store/snapshotStore';
-
-export const pluralFiles = (count: number): string => `${count} file${count === 1 ? '' : 's'}`;
+import { pluralFiles } from '../utils/format';
 
 const focusView = () => vscode.commands.executeCommand(COMMANDS.focusView);
 

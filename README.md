@@ -13,6 +13,7 @@ Works in VS Code, Cursor, and other VS Code forks.
 
 - [Claude Code](https://code.claude.com) running in the project folder.
 - **Node.js** on your `PATH`. Claude Code runs Bouncer's hook with `node`.
+- **git** on your `PATH`, to track changes Claude makes with shell commands.
 
 ## Getting started
 
@@ -45,6 +46,9 @@ Works in VS Code, Cursor, and other VS Code forks.
 
 - Before Claude edits a file, a `PreToolUse` hook copies the original to `.bouncer/snapshots/`.
   This happens only the first time per file, so you always compare against the pre-session version.
+- Changes Claude makes through shell commands (`sed`, scripts, `mv`, `rm`, ...) are tracked too: Bouncer
+  compares the project before and after each command and saves the original of every changed, created,
+  or deleted file. This uses git internally with a private index, so your staging area is never touched.
 - When Claude stops, a `Stop` hook marks the session `done` and Bouncer notifies you.
 - **Keep** deletes the snapshot. **Undo** restores the original, or deletes the file if Claude created it.
 - The hook never blocks Claude. Errors are written to `.bouncer/hook.log`.
@@ -56,9 +60,9 @@ Works in VS Code, Cursor, and other VS Code forks.
   it uncommitted, or disable Bouncer before committing.
 - After an extension update, Bouncer updates the hook path automatically the next time it activates.
 - In a multi-root workspace, Bouncer uses the first folder.
-- Changes Claude makes through shell commands (e.g. `rm`, `sed`) are not tracked. Only file edit tools are.
+- Shell-command changes are tracked in git repositories only, and files ignored by `.gitignore` are skipped.
+  Each shell command takes about 0.2 s longer while Bouncer compares the project.
 
 ## Ideas for later
 
-Per-hunk keep/undo, grouping changes by prompt, change summaries and stats, sensitive-file warnings,
-tracking files deleted by shell commands.
+Per-hunk keep/undo, grouping changes by prompt, change summaries and stats, sensitive-file warnings.

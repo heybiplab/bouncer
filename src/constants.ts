@@ -13,7 +13,8 @@ export const GITIGNORE_ENTRY = '.bouncer/';
 
 export const HOOK_SCRIPT_DIR = 'hooks';
 export const HOOK_SCRIPT_FILE = 'bouncer-hook.mjs';
-export const HOOK_MATCHER = 'Write|Edit|MultiEdit|NotebookEdit';
+export const HOOK_MATCHER = 'Write|Edit|MultiEdit|NotebookEdit|Bash';
+export const SHELL_MATCHER = 'Bash';
 export const HOOK_TIMEOUT_SECONDS = 10;
 
 export const ORIGINAL_SCHEME = 'bouncer-original';
@@ -41,8 +42,16 @@ export const CONTEXT_KEYS = {
   hasChanges: 'bouncer.hasChanges',
 } as const;
 
+/**
+ * Files the extension reacts to: the state file and snapshot records (the .json is written last, after its
+ * .snap, so it alone signals a finished snapshot). The folders are included so deleting them is noticed.
+ * Raw .snap copies, temp files, and hook.log are ignored.
+ */
+export const WATCH_GLOB = `{${BOUNCER_DIR},${BOUNCER_DIR}/${STATE_FILE},${BOUNCER_DIR}/${SNAPSHOTS_DIR},${BOUNCER_DIR}/${SNAPSHOTS_DIR}/*${META_EXT}}`;
+
 export const REFRESH_DEBOUNCE_MS = 100;
 export const STATUS_MESSAGE_MS = 3000;
 export const BINARY_SNIFF_BYTES = 8000;
 
 export const AVATAR_MEDIA_DIR = ['media', 'avatar'] as const;
+export const AVATAR_FILES = { html: 'avatar.html', css: 'avatar.css', js: 'avatar.js' } as const;
