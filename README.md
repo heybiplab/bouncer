@@ -36,7 +36,7 @@ Works in VS Code, Cursor, and other VS Code forks.
 
 | Command | What it does |
 |---|---|
-| Bouncer: Enable in this workspace | Adds Bouncer's hooks to `.claude/settings.json` and `.bouncer/` to `.gitignore` |
+| Bouncer: Enable in this workspace | Adds Bouncer's hooks to `.claude/settings.local.json` and keeps Bouncer's files out of git |
 | Bouncer: Disable in this workspace | Removes only Bouncer's hooks |
 | Bouncer: Open Diff | Pick a pending file and open its diff |
 | Bouncer: Keep / Undo | Pick a pending file and keep or undo it |
@@ -55,13 +55,21 @@ Works in VS Code, Cursor, and other VS Code forks.
 
 ## Good to know
 
-- `.claude/settings.json` gets the absolute path to the hook inside your installed extension. If you commit
-  that file, teammates without Bouncer installed at the same path will see hook errors. Consider keeping
-  it uncommitted, or disable Bouncer before committing.
-- After an extension update, Bouncer updates the hook path automatically the next time it activates.
+- Bouncer's hooks live in your personal `.claude/settings.local.json`, so teammates are never affected.
+  Enable adds that file and `.bouncer/` to `.gitignore`.
+- After an extension update, Bouncer updates its hooks automatically the next time it activates.
 - In a multi-root workspace, Bouncer uses the first folder.
 - Shell-command changes are tracked in git repositories only, and files ignored by `.gitignore` are skipped.
   Each shell command takes about 0.2 s longer while Bouncer compares the project.
+
+## Feedback
+
+Found a bug or have an idea? [Open an issue](https://github.com/heybiplab/bouncer/issues)
+or email [dev@heybiplab.in](mailto:dev@heybiplab.in).
+
+## License
+
+[MIT](LICENSE)
 
 ## Ideas for later
 

@@ -8,8 +8,10 @@ export const SNAP_EXT = '.snap';
 
 export const CLAUDE_DIR = '.claude';
 export const CLAUDE_SETTINGS_FILE = 'settings.json';
+export const CLAUDE_LOCAL_SETTINGS_FILE = 'settings.local.json';
 export const GITIGNORE_FILE = '.gitignore';
-export const GITIGNORE_ENTRY = '.bouncer/';
+/** Bouncer's data folder and the personal Claude settings it writes must never be committed. */
+export const GITIGNORE_ENTRIES = [`${BOUNCER_DIR}/`, `${CLAUDE_DIR}/${CLAUDE_LOCAL_SETTINGS_FILE}`] as const;
 
 export const HOOK_SCRIPT_DIR = 'hooks';
 export const HOOK_SCRIPT_FILE = 'bouncer-hook.mjs';

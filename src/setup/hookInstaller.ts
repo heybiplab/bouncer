@@ -1,9 +1,10 @@
-// Adds, removes, and repairs Bouncer's hook entries in the project's .claude/settings.json.
+// Adds, removes, and repairs Bouncer's hook entries in the project's .claude/settings.local.json.
 import * as vscode from 'vscode';
 import {
   CLAUDE_DIR,
+  CLAUDE_LOCAL_SETTINGS_FILE,
   CLAUDE_SETTINGS_FILE,
-  GITIGNORE_ENTRY,
+  GITIGNORE_ENTRIES,
   GITIGNORE_FILE,
   HOOK_MATCHER,
   SHELL_MATCHER,
@@ -91,21 +92,33 @@ export const addBouncerHooks = (settings: ClaudeSettings, command: string): Clau
   return { ...cleaned, hooks };
 };
 
-/** Adds `.bouncer/` to .gitignore content unless an equivalent line is present. */
-export const withGitignoreEntry = (content: string): string | null => {
-  const present = content.split(/\r?\n/).some((line) => /^\/?\.bouncer\/?$/.test(line.trim()));
-  if (present) {
+/** Compares .gitignore lines without a leading or trailing slash (`.bouncer`, `/.bouncer/`, ...). */
+const normalizeIgnoreLine = (line: string): string => line.trim().replace(/^\//, '').replace(/\/$/, '');
+
+/** Appends any missing entries to .gitignore content; returns null when nothing is missing. */
+export const withGitignoreEntries = (content: string, entries: readonly string[]): string | null => {
+  const present = new Set(content.split(/\r?\n/).map(normalizeIgnoreLine));
+  const missing = entries.filter((entry) => !present.has(normalizeIgnoreLine(entry)));
+  if (missing.length === 0) {
     return null;
   }
   const separator = content === '' || content.endsWith('\n') ? '' : '\n';
-  return `${content}${separator}${GITIGNORE_ENTRY}\n`;
+  return `${content}${separator}${missing.join('\n')}\n`;
 };
 
-const settingsUri = (root: vscode.Uri) => vscode.Uri.joinPath(root, CLAUDE_DIR, CLAUDE_SETTINGS_FILE);
+/**
+ * Bouncer writes its hooks to the personal, uncommitted settings.local.json: the hook path points into this
+ * machine's extension folder, so it must never reach teammates through the shared settings.json.
+ */
+const settingsFiles = (root: vscode.Uri) => ({
+  local: vscode.Uri.joinPath(root, CLAUDE_DIR, CLAUDE_LOCAL_SETTINGS_FILE),
+  shared: vscode.Uri.joinPath(root, CLAUDE_DIR, CLAUDE_SETTINGS_FILE),
+});
 
-/** Reads settings; missing file means `{}`. Invalid JSON throws so we never overwrite the user's file. */
-const readSettings = async (root: vscode.Uri): Promise<ClaudeSettings> => {
-  const text = await readTextOrNull(settingsUri(root));
+/** Reads a settings file; missing means `{}`. Invalid JSON throws so we never overwrite the user's file. */
+const readSettings = async (uri: vscode.Uri): Promise<ClaudeSettings> => {
+  const label = `${CLAUDE_DIR}/${uri.path.slice(uri.path.lastIndexOf('/') + 1)}`;
+  const text = await readTextOrNull(uri);
   if (text === null || text.trim() === '') {
     return {};
   }
@@ -113,17 +126,17 @@ const readSettings = async (root: vscode.Uri): Promise<ClaudeSettings> => {
   try {
     parsed = JSON.parse(text);
   } catch {
-    throw new Error(`${CLAUDE_DIR}/${CLAUDE_SETTINGS_FILE} is not valid JSON. Fix it and try again.`);
+    throw new Error(`${label} is not valid JSON. Fix it and try again.`);
   }
   if (!isRecord(parsed)) {
-    throw new Error(`${CLAUDE_DIR}/${CLAUDE_SETTINGS_FILE} must contain a JSON object.`);
+    throw new Error(`${label} must contain a JSON object.`);
   }
   return parsed;
 };
 
 const ensureGitignore = async (root: vscode.Uri): Promise<void> => {
   const uri = vscode.Uri.joinPath(root, GITIGNORE_FILE);
-  const next = withGitignoreEntry((await readTextOrNull(uri)) ?? '');
+  const next = withGitignoreEntries((await readTextOrNull(uri)) ?? '', GITIGNORE_ENTRIES);
   if (next !== null) {
     await writeText(uri, next);
   }
@@ -138,40 +151,60 @@ const ensureStateFile = async (root: vscode.Uri): Promise<void> => {
   }
 };
 
+const currentCommand = (extensionUri: vscode.Uri) => buildHookCommand(hookScriptPath(extensionUri));
+
+/** Removes Bouncer's hooks from the shared settings.json (where older versions put them), if present. */
+const removeFromShared = async (uri: vscode.Uri, shared: ClaudeSettings): Promise<boolean> => {
+  if (!isBouncerEnabled(shared)) {
+    return false;
+  }
+  await writeJson(uri, removeBouncerHooks(shared));
+  return true;
+};
+
 export const enableInWorkspace = async (root: vscode.Uri, extensionUri: vscode.Uri): Promise<void> => {
-  const settings = await readSettings(root);
-  await writeJson(settingsUri(root), addBouncerHooks(settings, buildHookCommand(hookScriptPath(extensionUri))));
+  const files = settingsFiles(root);
+  const [local, shared] = await Promise.all([readSettings(files.local), readSettings(files.shared)]);
   await ensureGitignore(root);
+  await writeJson(files.local, addBouncerHooks(local, currentCommand(extensionUri)));
+  await removeFromShared(files.shared, shared);
   await ensureStateFile(root);
 };
 
-/** Removes only Bouncer's handlers. Returns false if it was not enabled. */
+/** Removes only Bouncer's handlers, from both settings files. Returns false if it was not enabled. */
 export const disableInWorkspace = async (root: vscode.Uri): Promise<boolean> => {
-  const settings = await readSettings(root);
-  if (!isBouncerEnabled(settings)) {
-    return false;
+  const files = settingsFiles(root);
+  const [local, shared] = await Promise.all([readSettings(files.local), readSettings(files.shared)]);
+  const fromShared = await removeFromShared(files.shared, shared);
+  if (!isBouncerEnabled(local)) {
+    return fromShared;
   }
-  await writeJson(settingsUri(root), removeBouncerHooks(settings));
+  await writeJson(files.local, removeBouncerHooks(local));
   return true;
 };
 
 /**
- * On activation: if enabled, make sure the hooks match this version (script path after an update, new events
- * added in newer versions). Rewrites the file only when something differs. Returns whether enabled.
+ * On activation: if enabled, make sure the hooks match this version (script path after an update, events added
+ * in newer versions, hooks moved out of the shared settings.json). Files are rewritten only when something
+ * differs. Returns whether Bouncer is enabled.
  */
 export const syncHookPath = async (root: vscode.Uri, extensionUri: vscode.Uri): Promise<boolean> => {
-  let settings: ClaudeSettings;
+  const files = settingsFiles(root);
+  let local: ClaudeSettings;
+  let shared: ClaudeSettings;
   try {
-    settings = await readSettings(root);
+    [local, shared] = await Promise.all([readSettings(files.local), readSettings(files.shared)]);
   } catch {
     return false;
   }
-  if (!isBouncerEnabled(settings)) {
+  if (!isBouncerEnabled(local) && !isBouncerEnabled(shared)) {
     return false;
   }
-  const updated = addBouncerHooks(settings, buildHookCommand(hookScriptPath(extensionUri)));
-  if (JSON.stringify(updated) !== JSON.stringify(settings)) {
-    await writeJson(settingsUri(root), updated);
+  const updated = addBouncerHooks(local, currentCommand(extensionUri));
+  if (JSON.stringify(updated) !== JSON.stringify(local)) {
+    await ensureGitignore(root);
+    await writeJson(files.local, updated);
   }
+  await removeFromShared(files.shared, shared);
   return true;
 };

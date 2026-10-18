@@ -3,8 +3,21 @@
   "displayName": "Bouncer",
   "description": "Review Claude Code's file changes after it finishes. Keep or undo each file, with a clear diff.",
   "version": "0.1.0",
-  "publisher": "biplabmondal",
-  "license": "UNLICENSED",
+  "publisher": "heybiplab",
+  "author": {
+    "name": "Biplab Mondal",
+    "email": "dev@heybiplab.in",
+    "url": "https://heybiplab.in"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/heybiplab/bouncer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/heybiplab/bouncer/issues"
+  },
+  "homepage": "https://github.com/heybiplab/bouncer#readme",
   "icon": "media/icon.png",
   "engines": {
     "vscode": "^1.125.0"
@@ -57,7 +70,7 @@
       {
         "view": "bouncer.changes",
         "when": "workbenchState != empty && !bouncer.enabled",
-        "contents": "Bouncer isn't on duty in this workspace yet.\n[Enable Bouncer](command:bouncer.enable)\nThis adds a hook to .claude/settings.json so Claude's edits wait here for your review."
+        "contents": "Bouncer isn't on duty in this workspace yet.\n[Enable Bouncer](command:bouncer.enable)\nClaude's edits will then wait here for your review. Bouncer adds its hooks to your personal .claude/settings.local.json, which is never committed."
       },
       {
         "view": "bouncer.changes",
@@ -179,7 +192,7 @@
     "lint": "eslint src",
     "test": "vscode-test",
     "test:hook": "node --test \"test/hook/*.test.mjs\"",
-    "vsix": "vsce package --no-dependencies --allow-missing-repository"
+    "vsix": "vsce package --no-dependencies"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
