@@ -1,8 +1,8 @@
 {
   "name": "bouncer",
-  "displayName": "Bouncer",
-  "description": "Review Claude Code's file changes after it finishes. Keep or undo each file, with a clear diff.",
-  "version": "0.1.0",
+  "displayName": "Bouncer: Review AI Code Changes",
+  "description": "Review every change Claude Code makes after it finishes. See a clear diff, then keep or undo each file (or all at once). Tracks edits and shell commands. Works in VS Code, Cursor and other forks.",
+  "version": "0.1.1",
   "publisher": "heybiplab",
   "author": {
     "name": "Biplab Mondal",
@@ -18,19 +18,55 @@
     "url": "https://github.com/heybiplab/bouncer/issues"
   },
   "homepage": "https://github.com/heybiplab/bouncer#readme",
+  "galleryBanner": {
+    "color": "#2b4c7e",
+    "theme": "dark"
+  },
+  "pricing": "Free",
+  "qna": "https://github.com/heybiplab/bouncer/issues",
   "icon": "media/icon.png",
   "engines": {
-    "vscode": "^1.125.0"
+    "vscode": "^1.90.0"
+  },
+  "extensionKind": [
+    "workspace"
+  ],
+  "capabilities": {
+    "virtualWorkspaces": {
+      "supported": false,
+      "description": "Bouncer needs local files, Node.js, and git to track changes."
+    },
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "Bouncer installs Claude Code hooks, which run commands, so it requires a trusted workspace."
+    }
   },
   "categories": [
+    "AI",
     "Other"
   ],
   "keywords": [
+    "claude",
     "claude code",
+    "ai",
+    "ai agent",
+    "agent",
+    "agentic",
+    "code review",
     "review",
     "diff",
     "undo",
-    "ai"
+    "revert",
+    "rollback",
+    "accept",
+    "reject",
+    "changes",
+    "checkpoint",
+    "safety",
+    "guardrail",
+    "approve",
+    "llm",
+    "vibe coding"
   ],
   "activationEvents": [
     "workspaceContains:.bouncer/state.json"
@@ -51,13 +87,13 @@
         {
           "id": "bouncer.avatar",
           "type": "webview",
-          "name": "Bouncer",
-          "initialSize": 1
+          "name": "At the Door",
+          "initialSize": 2
         },
         {
           "id": "bouncer.changes",
           "name": "Pending Changes",
-          "initialSize": 3
+          "initialSize": 5
         }
       ]
     },
@@ -197,7 +233,7 @@
   "devDependencies": {
     "@types/mocha": "^10.0.10",
     "@types/node": "24.x",
-    "@types/vscode": "1.125.0",
+    "@types/vscode": "1.90.0",
     "@vscode/test-cli": "^0.0.15",
     "@vscode/test-electron": "^3.0.0",
     "@vscode/vsce": "4.0.0",

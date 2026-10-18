@@ -1,38 +1,59 @@
-# Bouncer
+# Bouncer: Review AI Code Changes
 
 > Nothing gets into your code without your OK.
 
-Bouncer lets you review every file change Claude Code makes **after it finishes**, instead of approving
-each edit one by one. Keep or undo changes per file, or all at once, with a clear red/green diff.
+Let Claude Code work without interruptions, then **review everything it changed in one place**.
+Bouncer lists every file Claude touched, shows a clear red/green diff, and lets you **keep or undo**
+each file, or all of them at once.
 
-Works in VS Code, Cursor, and other VS Code forks.
+- ✅ **Tracks every change**: file edits *and* changes made through shell commands (`sed`, scripts, `mv`, `rm`).
+- 🔍 **Diff on click**: the original on the left, Claude's version on the right.
+- ↩️ **Undo safely**: restores the exact original bytes, deletes files Claude created, brings back files it deleted.
+- 🔒 **100% local**: no account, no telemetry, nothing leaves your machine.
+
+![Bouncer: files Claude changed wait at the door, then you keep or undo each one](media/screenshots/demo.gif)
 
 > Bouncer is an unofficial, independent tool. It is not made by or affiliated with Anthropic.
 
-## Requirements
+## Works with
 
-- [Claude Code](https://code.claude.com) running in the project folder.
-- **Node.js** on your `PATH`. Claude Code runs Bouncer's hook with `node`.
-- **git** on your `PATH`, to track changes Claude makes with shell commands.
+| Editor | Install from |
+|---|---|
+| VS Code | [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=heybiplab.bouncer) |
+| Cursor, Windsurf, Antigravity, VSCodium and other VS Code forks | [Open VSX](https://open-vsx.org/extension/heybiplab/bouncer) |
+
+Requires VS Code 1.90 or newer (or a fork based on it), on macOS, Linux, or Windows.
 
 ## Getting started
 
-1. Open your project folder.
+1. Install Bouncer and open your project folder.
 2. Click the **Bouncer** icon in the activity bar, then **Enable Bouncer**.
-   (Or run **Bouncer: Enable in this workspace** from the Command Palette.)
-3. Ask Claude to change some files.
+3. Start a new Claude Code session and ask it to change some files.
 4. When Claude finishes you'll see *"Bouncer stopped 3 files at the door."* Click **Review**.
 5. Click a file to see the diff. Use ✓ **Keep** or ↺ **Undo** on each file, or **Keep All** / **Undo All** at the top.
 
-## What you get
+### Requirements
 
-- **Pending Changes** list with a badge (`N`) for new files.
-- **Diff on click**: the original on the left, Claude's version on the right. New files diff against an empty document.
-- **Keep / Undo** per file, plus **Keep All / Undo All**. Undo All always asks first.
+- [Claude Code](https://code.claude.com) running in the project folder.
+- **Node.js** on your `PATH` (Claude Code runs Bouncer's hook with `node`).
+- **git** on your `PATH`, to track changes made with shell commands.
+
+## Features
+
+![The Bouncer panel with three pending changes next to a red/green diff](media/screenshots/overview.png)
+
+- **Pending Changes** list, with an `N` badge for new files.
+- **Diff on click**. New files diff against an empty document; deleted files show what was removed.
+- **Keep / Undo** per file, plus **Keep All / Undo All**. Undo All always asks first, and you're warned
+  before undoing a file with unsaved edits.
 - **Status bar** count (`🛡 Bouncer: 3`). Click it to jump to the list.
-- **The Bouncer** himself: a tiny pixel-art doorman who watches while Claude works and holds up a sign when files are waiting.
+- **"Claude finished" notification** when files are waiting.
+- **The Bouncer** himself: a tiny pixel-art doorman who watches while Claude works and holds up a sign
+  when files are waiting. Follows your theme and respects reduced-motion settings.
 
 ## Commands
+
+All commands are in the Command Palette under **Bouncer:**.
 
 | Command | What it does |
 |---|---|
@@ -44,33 +65,50 @@ Works in VS Code, Cursor, and other VS Code forks.
 
 ## How it works
 
-- Before Claude edits a file, a `PreToolUse` hook copies the original to `.bouncer/snapshots/`.
-  This happens only the first time per file, so you always compare against the pre-session version.
-- Changes Claude makes through shell commands (`sed`, scripts, `mv`, `rm`, ...) are tracked too: Bouncer
-  compares the project before and after each command and saves the original of every changed, created,
-  or deleted file. This uses git internally with a private index, so your staging area is never touched.
-- When Claude stops, a `Stop` hook marks the session `done` and Bouncer notifies you.
-- **Keep** deletes the snapshot. **Undo** restores the original, or deletes the file if Claude created it.
-- The hook never blocks Claude. Errors are written to `.bouncer/hook.log`.
+- Before Claude edits a file, a Claude Code hook saves the original to `.bouncer/snapshots/`. This happens
+  only the first time per file, so you always compare against the version from before Claude started.
+- For shell commands, Bouncer compares the project before and after each command and saves the original of
+  every changed, created, or deleted file. It uses git internally with a private index, so your staging
+  area, branches, and history are never touched.
+- **Keep** forgets the saved original. **Undo** restores it.
+- The hook never blocks or slows down Claude's decisions. Errors go to `.bouncer/hook.log`.
+
+## Privacy
+
+Bouncer runs entirely on your machine. It has no telemetry, makes no network requests, and needs no
+account. Saved originals stay in your project's `.bouncer/` folder, which is kept out of git.
 
 ## Good to know
 
 - Bouncer's hooks live in your personal `.claude/settings.local.json`, so teammates are never affected.
-  Enable adds that file and `.bouncer/` to `.gitignore`.
 - After an extension update, Bouncer updates its hooks automatically the next time it activates.
+- Shell-command changes are tracked in git repositories only, and files ignored by `.gitignore` are
+  skipped. Each shell command takes about 0.2 s longer while Bouncer compares the project.
 - In a multi-root workspace, Bouncer uses the first folder.
-- Shell-command changes are tracked in git repositories only, and files ignored by `.gitignore` are skipped.
-  Each shell command takes about 0.2 s longer while Bouncer compares the project.
+
+## Troubleshooting
+
+**Claude changed files but nothing shows up**
+- Start a **new** Claude Code session after enabling. Claude Code loads hooks when a session starts.
+- Check that `node` (and `git`, for shell commands) work in a terminal.
+- Look in `.bouncer/hook.log` for errors.
+
+**Bouncer says it isn't enabled**: run **Bouncer: Enable in this workspace**.
+
+## Uninstalling
+
+Run **Bouncer: Disable in this workspace** in each project first to remove its hooks, then uninstall.
+If you forget, the leftover hooks are harmless and do nothing. You can also delete the `.bouncer/` folder.
 
 ## Feedback
 
 Found a bug or have an idea? [Open an issue](https://github.com/heybiplab/bouncer/issues)
 or email [dev@heybiplab.in](mailto:dev@heybiplab.in).
 
+## Roadmap
+
+Per-hunk keep/undo, grouping changes by prompt, change summaries and stats, sensitive-file warnings.
+
 ## License
 
 [MIT](LICENSE)
-
-## Ideas for later
-
-Per-hunk keep/undo, grouping changes by prompt, change summaries and stats, sensitive-file warnings.

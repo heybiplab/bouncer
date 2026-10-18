@@ -18,3 +18,7 @@ pnpm-lock.yaml
 pnpm-workspace.yaml
 .npmrc
 *.vsix
+# Local Bouncer data and personal Claude settings from developing with Bouncer enabled: never ship them.
+.bouncer/**
+.claude/**
+media/screenshots/**

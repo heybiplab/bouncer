@@ -33,7 +33,11 @@ const isBouncerHandler = (handler: HookHandler): boolean =>
 export const hookScriptPath = (extensionUri: vscode.Uri): string =>
   vscode.Uri.joinPath(extensionUri, HOOK_SCRIPT_DIR, HOOK_SCRIPT_FILE).fsPath;
 
-export const buildHookCommand = (scriptPath: string): string => `node "${scriptPath}"`;
+/**
+ * `|| true` keeps Claude quiet if the script is gone: after Bouncer is uninstalled, or for the moment between
+ * an update and the next activation that repairs the path. The script itself always exits 0.
+ */
+export const buildHookCommand = (scriptPath: string): string => `node "${scriptPath}" || true`;
 
 /**
  * The handler Bouncer expects for each event. Tool hooks stay synchronous: originals must be saved before
